@@ -1,0 +1,410 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                   JAIC PDF REPORT GENERATION SYSTEM                            ║
+║                        Architecture Overview                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT LAYER                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────┐         ┌──────────────────┐
+    │  Download Button │         │  Preview Button  │
+    │   (React/TS)     │         │   (React/TS)     │
+    └────────┬─────────┘         └────────┬─────────┘
+             │                             │
+             │ HTTP GET                    │ HTTP GET
+             │ /api/reports/[id]/pdf       │ /api/reports/[id]/pdf?preview=true
+             │                             │
+             └──────────────┬──────────────┘
+                            │
+                            ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              API LAYER                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌────────────────────────────────────────────────────────────────────┐
+    │  /app/api/reports/[caseId]/pdf/route.ts                           │
+    │                                                                    │
+    │  ┌──────────────────────────────────────────────────────────────┐ │
+    │  │  1. Parse query parameters (preview, options)                │ │
+    │  │  2. Fetch case data from storage                             │ │
+    │  │  3. Fetch evidence records                                   │ │
+    │  │  4. Fetch case notes                                         │ │
+    │  │  5. Transform to PDF format                                  │ │
+    │  │  6. Validate case data                                       │ │
+    │  │  7. Generate report (PDF or HTML)                            │ │
+    │  │  8. Stream to client                                         │ │
+    │  └──────────────────────────────────────────────────────────────┘ │
+    └───────────────────────────┬────────────────────────────────────────┘
+                                │
+                                ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DATA LAYER                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+    │ /lib/data-storage│    │ /lib/case-number │    │ /lib/chain-of-   │
+    │                  │    │                  │    │ custody          │
+    │ • getCaseById()  │    │ • parseCaseNum() │    │ • verifyCustody()│
+    │ • getEvidence()  │    │ • formatCase()   │    │ • exportChain()  │
+    │ • getCaseNotes() │    │ • validate()     │    │ • hashFile()     │
+    └────────┬─────────┘    └────────┬─────────┘    └────────┬─────────┘
+             │                       │                        │
+             └───────────────────────┼────────────────────────┘
+                                     │
+                                     ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      PDF GENERATION LAYER                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌────────────────────────────────────────────────────────────────────┐
+    │  /lib/pdf-generator.ts                                             │
+    │                                                                    │
+    │  ┌──────────────────────────────────────────────────────────────┐ │
+    │  │  Core Functions                                              │ │
+    │  │  ───────────────                                             │ │
+    │  │  • generateInvestigationalReport(data, options)              │ │
+    │  │  • generateHTMLReportString(data, options)                   │ │
+    │  │  • generatePDFFilename(caseNumber)                           │ │
+    │  │  • validateCaseData(data)                                    │ │
+    │  └──────────────────────────────────────────────────────────────┘ │
+    │                                                                    │
+    │  ┌──────────────────────────────────────────────────────────────┐ │
+    │  │  Internal Components                                         │ │
+    │  │  ──────────────────                                          │ │
+    │  │  • generateHTMLReport() - Template engine                    │ │
+    │  │  • escapeHTML() - Security                                   │ │
+    │  │  • formatDate() - Formatting                                 │ │
+    │  │  • formatFileSize() - Utilities                              │ │
+    │  │  • getCaseDomainLabel() - Labels                             │ │
+    │  └──────────────────────────────────────────────────────────────┘ │
+    └─────────────────────────┬──────────────────────────────────────────┘
+                              │
+                              ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      PDF RENDERING LAYER                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────┐
+                    │    Puppeteer        │
+                    │  (Chrome Headless)  │
+                    │                     │
+                    │  • HTML to PDF      │
+                    │  • Print CSS        │
+                    │  • Page formatting  │
+                    │  • Header/Footer    │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │    PDF Buffer       │
+                    │  (Ready to stream)  │
+                    └─────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                         REPORT STRUCTURE                                       ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PAGE 1: COVER PAGE                                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                          ┌───────────────┐                                 │
+│                          │     JAIC      │  (Logo)                         │
+│                          └───────────────┘                                 │
+│                                                                             │
+│                    INVESTIGATIONAL BRIEF                                    │
+│                                                                             │
+│                    JAIC-202412-FRAUD-0001-A1B2                              │
+│                                                                             │
+│          ┌───────────────────────────────────────────────┐                 │
+│          │ CONFIDENTIAL - ATTORNEY WORK PRODUCT          │                 │
+│          └───────────────────────────────────────────────┘                 │
+│                                                                             │
+│                    Generated: December 4, 2024                              │
+│                                                                             │
+│                         Prepared by                                         │
+│         Jonathan Anderson Investigational Corporation                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PAGE 2: EXECUTIVE SUMMARY                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Case Overview                                                               │
+│ ─────────────                                                               │
+│ [Narrative summary of the case...]                                         │
+│                                                                             │
+│ Key Findings                                                                │
+│ ────────────                                                                │
+│ • Finding 1                                                                 │
+│ • Finding 2                                                                 │
+│ • Finding 3                                                                 │
+│                                                                             │
+│ Recommendations                                                             │
+│ ───────────────                                                             │
+│ • Recommendation 1                                                          │
+│ • Recommendation 2                                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PAGE 3: CASE DETAILS                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────┐   │
+│ │ Case Number:     JAIC-202412-FRAUD-0001-A1B2                        │   │
+│ │ Case Title:      Financial Investigation                            │   │
+│ │ Domain:          Fraud & Financial Leakage                          │   │
+│ │ Status:          [ACTIVE]                                           │   │
+│ │ Intake Date:     December 1, 2024                                   │   │
+│ │ Last Modified:   December 4, 2024                                   │   │
+│ └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│ Client Information                                                          │
+│ ──────────────────                                                          │
+│ ┌─────────────────────────────────────────────────────────────────────┐   │
+│ │ Client Name:     John Smith                                         │   │
+│ │ Organization:    ABC Corporation                                    │   │
+│ │ Contact:         john.smith@abc.com | (555) 123-4567               │   │
+│ └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PAGE 4: EVIDENCE SUMMARY                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Total Evidence Items: 3                                                     │
+│                                                                             │
+│ ┌───────────────────────────────────────────────────────────────────────┐ │
+│ │ ID        │ File Name         │ Type │ Size  │ Date       │ Status   │ │
+│ ├───────────────────────────────────────────────────────────────────────┤ │
+│ │ EVD-001   │ document.pdf      │ PDF  │ 2 MB  │ 2024-12-01 │ VERIFIED │ │
+│ │ EVD-002   │ evidence.jpg      │ JPG  │ 512KB │ 2024-12-02 │ VERIFIED │ │
+│ │ EVD-003   │ data.csv          │ CSV  │ 1 MB  │ 2024-12-03 │ VERIFIED │ │
+│ └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ Evidence Integrity Verification                                             │
+│ ───────────────────────────────                                             │
+│ ┌─────────────────────────────────────────────────────────────────────┐   │
+│ │ File: document.pdf                                                  │   │
+│ │ SHA-256: a1b2c3d4e5f6...                                            │   │
+│ │ Status: [VERIFIED ✓]                                                │   │
+│ └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PAGE 5: CHAIN OF CUSTODY                                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ ┌─────────────────────────────────────────────────────────────────────┐   │
+│ │ Custody Chain Verification: VALID ✓                                 │   │
+│ └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│ Total Custody Events: 5                                                     │
+│                                                                             │
+│ ┌───────────────────────────────────────────────────────────────────────┐ │
+│ │ Entry  │ Timestamp         │ Action   │ Actor           │ Hash       │ │
+│ ├───────────────────────────────────────────────────────────────────────┤ │
+│ │ COC-01 │ 2024-12-01 10:00  │ RECEIVED │ Intake Coord    │ 1234...   │ │
+│ │ COC-02 │ 2024-12-01 11:30  │ VERIFIED │ Lead Invest.    │ 2345...   │ │
+│ │ COC-03 │ 2024-12-02 09:15  │ ANALYZED │ Forensic Analyst│ 3456...   │ │
+│ └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ Detailed Custody Timeline                                                   │
+│ ────────────────────────                                                    │
+│ ● 2024-12-01 10:00:00                                                       │
+│   RECEIVED - Intake Coordinator                                             │
+│   Evidence ID: EVD-001 | Location: SERVER                                   │
+│   Verification Hash: 1234567890abcdef                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PAGE 6: INVESTIGATIONAL TIMELINE                                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ Total Timeline Events: 4                                                    │
+│                                                                             │
+│ ● 2024-12-01 09:00:00                                                       │
+│   Case Opened [STATUS_CHANGE]                                               │
+│   Actor: Intake Coordinator                                                 │
+│   Initial case intake and documentation completed                           │
+│                                                                             │
+│ ● 2024-12-01 14:30:00                                                       │
+│   Evidence Received [EVIDENCE_ADDED]                                        │
+│   Actor: System                                                             │
+│   Bank statements uploaded and integrity verified                           │
+│                                                                             │
+│ ● 2024-12-02 10:15:00                                                       │
+│   Investigation Assigned [STATUS_CHANGE]                                    │
+│   Actor: Case Manager                                                       │
+│   Case assigned to Senior Investigator                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PAGE 7: APPENDICES                                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ A. Technical Information                                                    │
+│    ┌─────────────────────────────────────────────────────────────────┐    │
+│    │ Report Generated:   2024-12-04T18:23:45.000Z                    │    │
+│    │ Generator Version:  JAIC-PDF-GEN-v1.0.0                         │    │
+│    │ Report Format:      HTML-to-PDF                                 │    │
+│    │ Classification:     CONFIDENTIAL - ATTORNEY WORK PRODUCT        │    │
+│    └─────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│ B. Case Metadata                                                            │
+│    [Case year, month, category, sequence, checksum...]                      │
+│                                                                             │
+│ C. Additional Notes                                                         │
+│    [Investigator notes and observations...]                                 │
+│                                                                             │
+│ D. Legal Disclaimers                                                        │
+│    ┌─────────────────────────────────────────────────────────────────┐    │
+│    │ This investigational brief is prepared as attorney work         │    │
+│    │ product and is confidential. Unauthorized disclosure may        │    │
+│    │ violate attorney-client privilege...                            │    │
+│    └─────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│ ─────────────────────────────────────────────────────────────────────      │
+│ Jonathan Anderson Investigational Corporation                               │
+│ Case Number: JAIC-202412-FRAUD-0001-A1B2 | Generated: Dec 4, 2024          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                           DATA FLOW                                            ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+1. CLIENT REQUEST
+   ↓
+   User clicks "Download Report" button
+   ↓
+   fetch('/api/reports/JAIC-202412-FRAUD-0001-A1B2/pdf')
+
+2. API ROUTE
+   ↓
+   Parse caseId from URL parameters
+   ↓
+   Fetch case data from storage
+   ↓
+   Fetch evidence records
+   ↓
+   Fetch case notes
+   ↓
+   Transform data to PDF format
+
+3. PDF GENERATOR
+   ↓
+   Validate case data
+   ↓
+   Generate HTML template with styles
+   ↓
+   Inject case data into template
+   ↓
+   Apply professional styling (CSS)
+
+4. PUPPETEER
+   ↓
+   Launch headless Chrome
+   ↓
+   Load HTML content
+   ↓
+   Apply print CSS media queries
+   ↓
+   Generate PDF with page breaks
+   ↓
+   Add headers and footers
+   ↓
+   Return PDF buffer
+
+5. RESPONSE
+   ↓
+   Set Content-Type: application/pdf
+   ↓
+   Set Content-Disposition: attachment
+   ↓
+   Stream PDF buffer to client
+   ↓
+   Browser triggers download
+
+6. CLIENT DOWNLOAD
+   ↓
+   File saved as: JAIC-[CASE-NUMBER]-Report-[DATE].pdf
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                        SECURITY FEATURES                                       ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Classification Marking                                                     │
+│  ┌───────────────────────────────────────────────────────┐                 │
+│  │  CONFIDENTIAL - ATTORNEY WORK PRODUCT                 │                 │
+│  └───────────────────────────────────────────────────────┘                 │
+│                                                                             │
+│  Watermark (Optional)                                                       │
+│    "GENERATED BY JAIC INVESTIGATIONAL SYSTEM"                               │
+│    (Diagonal, low-opacity, page background)                                 │
+│                                                                             │
+│  Integrity Verification                                                     │
+│    • SHA-256 hashes for all evidence files                                  │
+│    • Chain of custody verification status                                   │
+│    • Timestamp verification                                                 │
+│    • Tamper detection for custody entries                                   │
+│                                                                             │
+│  Access Control                                                             │
+│    • Case number in HTTP headers (audit trail)                              │
+│    • No-cache headers (prevent unauthorized caching)                        │
+│    • Filename includes case number (tracking)                               │
+│    • API authentication (implement as needed)                               │
+│                                                                             │
+│  Data Protection                                                            │
+│    • HTML escaping (prevent XSS)                                            │
+│    • Optional client info exclusion                                         │
+│    • Selective section inclusion                                            │
+│    • Secure transmission (HTTPS)                                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                         SYSTEM CAPABILITIES                                    ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+✓ Professional PDF generation with Puppeteer
+✓ HTML preview mode (no Puppeteer required)
+✓ Complete report structure (7 sections)
+✓ Chain of custody verification
+✓ Evidence integrity verification
+✓ Customizable report options
+✓ Selective section inclusion
+✓ Security features and watermarks
+✓ Attorney work product formatting
+✓ TypeScript type safety
+✓ Automatic filename generation
+✓ Data validation before generation
+✓ Graceful fallback to text reports
+✓ Integration with existing JAIC system
+✓ Production-ready API endpoints
+✓ Comprehensive documentation
+✓ Working code examples
+
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    CREATED: December 4, 2024                                   ║
+║                    FOR: Jonathan Anderson Investigational Corporation          ║
+║                    STATUS: Ready for Production Use                            ║
+╚════════════════════════════════════════════════════════════════════════════════╝
