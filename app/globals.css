@@ -1,21 +1,64 @@
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-ibm-plex: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-jetbrains: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  html {
+    @apply antialiased scroll-smooth;
+  }
+
+  body {
+    @apply bg-onyx text-smoke font-body;
+    @apply min-h-screen overflow-x-hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-semibold;
+  }
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
+@layer components {
+  /* Evidence Card Component */
+  .evidence-card {
+    @apply bg-slate border border-slate-100 rounded-lg p-6;
+    @apply transition-all duration-300 hover:border-investigation-50;
+    @apply shadow-evidence hover:shadow-investigation;
+  }
 
-body {
-  color: #333;
-  background: #fff;
-}
+  /* Metadata Chip */
+  .metadata-chip {
+    @apply inline-flex items-center px-3 py-1 rounded-full;
+    @apply bg-investigation-200 text-investigation-50 text-sm font-medium;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
+  /* Section Container */
+  .section-container {
+    @apply max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-24;
+  }
+
+  /* Button Primary */
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg;
+    @apply bg-investigation text-smoke font-medium;
+    @apply transition-all duration-200 hover:bg-investigation-50;
+    @apply focus:outline-none focus:ring-2 focus:ring-investigation-50 focus:ring-offset-2 focus:ring-offset-onyx;
+  }
+
+  /* Button Secondary */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg;
+    @apply border-2 border-investigation text-investigation font-medium;
+    @apply transition-all duration-200 hover:bg-investigation hover:text-smoke;
+    @apply focus:outline-none focus:ring-2 focus:ring-investigation-50 focus:ring-offset-2 focus:ring-offset-onyx;
+  }
 }
